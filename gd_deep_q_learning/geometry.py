@@ -4,6 +4,7 @@ import mss
 import numpy as np
 from collections import deque
 import pyautogui
+import openpyxl
 
 class geometry:
     pyautogui.PAUSE = 0.03333
@@ -11,6 +12,7 @@ class geometry:
     D = deque()
     mass_start = 0.2
     mass_increase = 0.0001
+    a = 1
 
 
     def frame_step(self, input_actions):
@@ -35,8 +37,14 @@ class geometry:
                 ors = self.D.popleft()
                 if np.all(ors == crop_xt1): # dead
                     terminal = True
+                    if self.mass_start > 0.204:
+                        document = openpyxl.load_workbook('Test2.xlsx')
+                        ws1 = document.active
+                        ws1.cell(row=self.a, column=1).value = (self.mass_start)
+                        document.save('Test2.xlsx')
+                        self.a += 1
                     self.mass_start = 0.2
-                    reward = -0.5-self.mass_start
+                    reward = -0.5 - self.mass_start
                 else:
                     reward = self.mass_start
 
