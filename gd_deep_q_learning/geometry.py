@@ -6,7 +6,7 @@ from collections import deque
 import pyautogui
 
 class geometry:
-    pyautogui.PAUSE = 0.03333
+    pyautogui.PAUSE = 0.01666
     REPLAY_DELAYCOUNT = 1
     D = deque()
     mass_start = 0.2
