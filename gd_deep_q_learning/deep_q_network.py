@@ -7,7 +7,9 @@ import sys
 from gd_deep_q_learning import geometry
 import random
 import numpy as np
+import tkinter
 from collections import deque
+import keyboard
 
 
 
@@ -15,12 +17,12 @@ GAME = 'dash'  # 로그 파일을 위한 재생되어지고 있던 게임
 ACTIONS = 2  # 유효한 액션 의 수
 GAMMA = 0.99  # 이전 관찰들로부터의 감소율
 OBSERVE = 10000.  # 훈련 전에 관찰하기 위한 타임 스텝
-EXPLORE = 3000000.  # 입실론 값을 강화하기 위한 최소 프레임수
-FINAL_EPSILON = 0.0001  # 입실론의 최종값
-INITIAL_EPSILON = 0.1  # 입실론 값의 시작값
-REPLAY_MEMORY = 50000  # 기억해야 할 이전 변화의 수
+EXPLORE = 2000000.  # 입실론 값을 강화하기 위한 최소 프레임수
+FINAL_EPSILON = 0.025 # 입실론의 최종값
+INITIAL_EPSILON = 0.25  # 입실론 값의 시작값
+REPLAY_MEMORY = 1000000  # 기억해야 할 이전 변화의 수
 BATCH = 32  # 미니배치의 크기
-FRAME_PER_ACTION = 1
+FRAME_PER_ACTION = 2
 
 
 def weight_variable(shape):
@@ -104,6 +106,7 @@ def train_network(s, readout, sess):
     saver = tf.train.Saver()
     sess.run(tf.initialize_all_variables())
 
+
     checkpoint = tf.train.get_checkpoint_state("saved_networks")
     if checkpoint and checkpoint.model_checkpoint_path:
         saver.restore(sess, checkpoint.model_checkpoint_path)
@@ -111,16 +114,28 @@ def train_network(s, readout, sess):
     else:
         print("Could not find old network weights")
 
+    '''root = tkinter.Tk()
+    T = tkinter.Text(root, height=12, width=110)
+    T.tag_configure('big', font=('Verdana', 40, 'bold'))
+    T.pack()
+    root.update_idletasks()'''
+
+
+
+
     # 훈련 시작
     epsilon = INITIAL_EPSILON
     t = 0
+    evaluate = True
     while True:
         # 욕심내어 액션 입실론을 선택한다
+        if keyboard.is_pressed("q"):
+            i = input("계속하려면 엔터를 누르세요..")
         readout_t = readout.eval(feed_dict={s: [s_t]})[0]
         a_t = np.zeros([ACTIONS])
         action_index = 0
         if t % FRAME_PER_ACTION == 0:
-            if random.random() <= epsilon:
+            if random.random() <= epsilon and evaluate:
                 print("----------랜덤 액션----------")
                 action_index = random.randrange(ACTIONS)
                 a_t[random.randrange(ACTIONS)] = 1
@@ -131,7 +146,7 @@ def train_network(s, readout, sess):
             a_t[0] = 1  # 아무것도 안한다
 
         # 입실론 크기를 줄인다
-        if epsilon > FINAL_EPSILON and t > OBSERVE:
+        if epsilon > FINAL_EPSILON and t > OBSERVE and evaluate:
             epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
 
         # 선택된 액션을 실행하고 다음 상태와 보상을 관찰한다
@@ -180,6 +195,11 @@ def train_network(s, readout, sess):
         # 매 10000번마다 경과를 저장한다
         if t % 10000 == 0:
             saver.save(sess, 'saved_networks/' + GAME + '-dqn', global_step=t)
+            G.active = 5
+            evaluate = False
+
+        if t % 10000 == 5:
+            evaluate = True
 
         # 출력 정보
         if t <= OBSERVE:
@@ -190,6 +210,27 @@ def train_network(s, readout, sess):
             state = "훈련"
 
         print("타임스텝", t, "/ 상태", state, "/ 입실론", epsilon, "/ 액션", action_index, "/ 보상", r_t, "/ Q 최대값 %e" % np.max(readout_t))
+
+        '''T.delete('1.0', tkinter.END)
+        m = np.max(readout_t)
+        #T.insert(tkinter.END, "MAX Q | " + str(m), 'big')
+        if(max1 < m):
+            max1 = m
+        os = 1 - m / max1
+        T.insert(tkinter.END, "MAX Q | " + str(m), 'big')
+        T.insert(tkinter.END, "\n죽을 확률 | "+str(round(os * 100, 4)) + "%", 'big')
+        T.tag_add("start", "2.8", "2.16")
+        if os > 0.75 :
+            T.tag_config("start", foreground="red")
+        elif os > 0.5 :
+            T.tag_config("start", foreground="orange")
+        elif os > 0.25:
+            T.tag_config("start", foreground="green")
+        else:
+            T.tag_config("start", foreground="blue")
+        T.update()'''
+
+
         # 파일에 저장
         '''
         if t % 10000 <= 100:
@@ -200,7 +241,9 @@ def train_network(s, readout, sess):
 
 
 def play_game():
-    sess = tf.InteractiveSession()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.InteractiveSession(config=config)
     s, readout, h_fc1 = create_network()
     train_network(s, readout, sess)
 
@@ -211,3 +254,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

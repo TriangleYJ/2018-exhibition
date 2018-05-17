@@ -4,7 +4,9 @@ mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 import tensorflow as tf
 
-sess = tf.InteractiveSession()
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.InteractiveSession(config=config)
 
 x = tf.placeholder(tf.float32, shape=[None, 784])
 y_ = tf.placeholder(tf.float32, shape=[None, 10])

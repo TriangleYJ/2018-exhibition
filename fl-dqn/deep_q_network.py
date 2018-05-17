@@ -4,20 +4,20 @@ from __future__ import print_function
 import tensorflow as tf
 import cv2
 import sys
+sys.path.append("game/")
 import wrapped_flappy_bird as game
 import random
 import numpy as np
 from collections import deque
 
-sys.path.append("game/")
 
 GAME = 'bird'  # 로그 파일을 위한 재생되어지고 있던 게임
 ACTIONS = 2  # 유효한 액션 의 수
 GAMMA = 0.99  # 이전 관찰들로부터의 감소율
 OBSERVE = 10000.  # 훈련 전에 관찰하기 위한 타임 스텝
 EXPLORE = 3000000.  # 입실론 값을 강화하기 위한 최소 프레임수
-FINAL_EPSILON = 0.0001  # 입실론의 최종값
-INITIAL_EPSILON = 0.1  # 입실론 값의 시작값
+FINAL_EPSILON = 0.005  # 입실론의 최종값
+INITIAL_EPSILON = 0.15  # 입실론 값의 시작값
 REPLAY_MEMORY = 50000  # 기억해야 할 이전 변화의 수
 BATCH = 32  # 미니배치의 크기
 FRAME_PER_ACTION = 1
@@ -104,13 +104,13 @@ def train_network(s, readout, sess):
     # 네트워크를 저장/불러온다
     saver = tf.train.Saver()
     sess.run(tf.initialize_all_variables())
-    '''
+
     checkpoint = tf.train.get_checkpoint_state("saved_networks")
     if checkpoint and checkpoint.model_checkpoint_path:
         saver.restore(sess, checkpoint.model_checkpoint_path)
         print("Successfully loaded:", checkpoint.model_checkpoint_path)
     else:
-        print("Could not find old network weights")'''
+        print("Could not find old network weights")
 
     # 훈련 시작
     epsilon = INITIAL_EPSILON
@@ -202,7 +202,9 @@ def train_network(s, readout, sess):
 
 
 def play_game():
-    sess = tf.InteractiveSession()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.InteractiveSession(config=config)
     s, readout, h_fc1 = create_network()
     train_network(s, readout, sess)
 
