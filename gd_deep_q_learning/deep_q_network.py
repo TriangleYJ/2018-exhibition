@@ -16,13 +16,13 @@ import keyboard
 GAME = 'dash'  # 로그 파일을 위한 재생되어지고 있던 게임
 ACTIONS = 2  # 유효한 액션 의 수
 GAMMA = 0.99  # 이전 관찰들로부터의 감소율
-OBSERVE = 10000.  # 훈련 전에 관찰하기 위한 타임 스텝
-EXPLORE = 2000000.  # 입실론 값을 강화하기 위한 최소 프레임수
-FINAL_EPSILON = 0.025 # 입실론의 최종값
-INITIAL_EPSILON = 0.25  # 입실론 값의 시작값
+OBSERVE = 1000.  # 훈련 전에 관찰하기 위한 타임 스텝
+EXPLORE = 3000000.  # 입실론 값을 강화하기 위한 최소 프레임수
+FINAL_EPSILON = 0.005 # 입실론의 최종값
+INITIAL_EPSILON = 0.1  # 입실론 값의 시작값
 REPLAY_MEMORY = 1000000  # 기억해야 할 이전 변화의 수
 BATCH = 32  # 미니배치의 크기
-FRAME_PER_ACTION = 2
+FRAME_PER_ACTION = 1
 
 
 def weight_variable(shape):
@@ -125,8 +125,11 @@ def train_network(s, readout, sess):
 
     # 훈련 시작
     epsilon = INITIAL_EPSILON
+    real_epsilon = INITIAL_EPSILON
     t = 0
-    evaluate = True
+    dead_t = 0
+    notevaluate = True
+    q_max = 0
     while True:
         # 욕심내어 액션 입실론을 선택한다
         if keyboard.is_pressed("q"):
@@ -135,10 +138,10 @@ def train_network(s, readout, sess):
         a_t = np.zeros([ACTIONS])
         action_index = 0
         if t % FRAME_PER_ACTION == 0:
-            if random.random() <= epsilon and evaluate:
+            if random.random() <= real_epsilon and notevaluate:
                 print("----------랜덤 액션----------")
                 action_index = random.randrange(ACTIONS)
-                a_t[random.randrange(ACTIONS)] = 1
+                a_t[action_index] = 1
             else:
                 action_index = np.argmax(readout_t)
                 a_t[action_index] = 1
@@ -146,7 +149,7 @@ def train_network(s, readout, sess):
             a_t[0] = 1  # 아무것도 안한다
 
         # 입실론 크기를 줄인다
-        if epsilon > FINAL_EPSILON and t > OBSERVE and evaluate:
+        if epsilon > FINAL_EPSILON and t > OBSERVE and notevaluate:
             epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
 
         # 선택된 액션을 실행하고 다음 상태와 보상을 관찰한다
@@ -154,6 +157,10 @@ def train_network(s, readout, sess):
         ret, x_t1 = cv2.threshold(x_t1, 1, 255, cv2.THRESH_BINARY)
         x_t1 = np.reshape(x_t1, (80, 80, 1))
         s_t1 = np.append(x_t1, s_t[:, :, :3], axis=2)
+
+        if terminal:
+            q_max = 0
+            dead_t = t
 
         # D에 변화를 저장한다
         D.append((s_t, a_t, r_t, s_t1, terminal))
@@ -196,10 +203,10 @@ def train_network(s, readout, sess):
         if t % 10000 == 0:
             saver.save(sess, 'saved_networks/' + GAME + '-dqn', global_step=t)
             G.active = 5
-            evaluate = False
+            notevaluate = False
 
         if t % 10000 == 5:
-            evaluate = True
+            notevaluate = True
 
         # 출력 정보
         if t <= OBSERVE:
@@ -209,8 +216,20 @@ def train_network(s, readout, sess):
         else:
             state = "훈련"
 
-        print("타임스텝", t, "/ 상태", state, "/ 입실론", epsilon, "/ 액션", action_index, "/ 보상", r_t, "/ Q 최대값 %e" % np.max(readout_t))
+        m = np.max(readout_t)
 
+        q_max += m
+        os = m / (q_max / (t - dead_t))
+        if os < 0.7:
+            real_epsilon = epsilon / os ** 4
+        elif os < 1:
+            real_epsilon = epsilon / os ** 3
+        elif os < 1.3:
+            real_epsilon = (FINAL_EPSILON - epsilon) / (1.3 - 1) * (os - 1) + epsilon
+        else:
+            real_epsilon = FINAL_EPSILON
+
+        print("타임스텝", t, "/ 상태", state, "/ 입실론", real_epsilon, "/ 액션", action_index, "/ 보상", r_t, "/ Q 최대값 %e" % m)
         '''T.delete('1.0', tkinter.END)
         m = np.max(readout_t)
         #T.insert(tkinter.END, "MAX Q | " + str(m), 'big')

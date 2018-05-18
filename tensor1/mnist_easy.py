@@ -6,8 +6,6 @@ mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 
 # TensorFlow 라이브러리를 추가한다.
 import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
 
 # 변수들을 설정한다.
 x = tf.placeholder(tf.float32, [None, 784])

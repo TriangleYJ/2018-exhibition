@@ -55,6 +55,7 @@ class geometry:
                     document.save('Test.xlsx')
                     self.active -= 1
                     if self.active == 0: self.a += 1
+                    print("==============recorded!================")
                 reward = (-1) * self.now
                 self.init = current_milli_time()
 
