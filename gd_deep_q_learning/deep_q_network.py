@@ -16,12 +16,12 @@ import keyboard
 GAME = 'dash'  # 로그 파일을 위한 재생되어지고 있던 게임
 ACTIONS = 2  # 유효한 액션 의 수
 GAMMA = 0.99  # 이전 관찰들로부터의 감소율
-OBSERVE = 1000.  # 훈련 전에 관찰하기 위한 타임 스텝
-EXPLORE = 3000000.  # 입실론 값을 강화하기 위한 최소 프레임수
-FINAL_EPSILON = 0.005 # 입실론의 최종값
-INITIAL_EPSILON = 0.1  # 입실론 값의 시작값
-REPLAY_MEMORY = 1000000  # 기억해야 할 이전 변화의 수
-BATCH = 32  # 미니배치의 크기
+OBSERVE = 10000.  # 훈련 전에 관찰하기 위한 타임 스텝
+EXPLORE = 5000000.  # 입실론 값을 강화하기 위한 최소 프레임수
+FINAL_EPSILON = 0.0 # 입실론의 최종값
+INITIAL_EPSILON = 0.0  # 입실론 값의 시작값
+REPLAY_MEMORY = 600000  # 기억해야 할 이전 변화의 수
+BATCH = 32  # 미니치의 크기
 FRAME_PER_ACTION = 1
 
 
@@ -114,22 +114,21 @@ def train_network(s, readout, sess):
     else:
         print("Could not find old network weights")
 
-    '''root = tkinter.Tk()
+    """root = tkinter.Tk()
     T = tkinter.Text(root, height=12, width=110)
     T.tag_configure('big', font=('Verdana', 40, 'bold'))
     T.pack()
-    root.update_idletasks()'''
-
+    root.update_idletasks()"""
 
 
 
     # 훈련 시작
     epsilon = INITIAL_EPSILON
-    real_epsilon = INITIAL_EPSILON
     t = 0
     dead_t = 0
     notevaluate = True
     q_max = 0
+    max1=0
     while True:
         # 욕심내어 액션 입실론을 선택한다
         if keyboard.is_pressed("q"):
@@ -138,7 +137,7 @@ def train_network(s, readout, sess):
         a_t = np.zeros([ACTIONS])
         action_index = 0
         if t % FRAME_PER_ACTION == 0:
-            if random.random() <= real_epsilon and notevaluate:
+            if random.random() <= epsilon and notevaluate:
                 print("----------랜덤 액션----------")
                 action_index = random.randrange(ACTIONS)
                 a_t[action_index] = 1
@@ -188,7 +187,7 @@ def train_network(s, readout, sess):
                 else:
                     y_batch.append(r_batch[i] + GAMMA * np.max(readout_j1_batch[i]))
 
-            # 점진적 하강 단계를 수행한다
+            # Gradient descent 를 수행한다
             train_step.run(feed_dict={
                 y: y_batch,
                 a: a_batch,
@@ -218,20 +217,10 @@ def train_network(s, readout, sess):
 
         m = np.max(readout_t)
 
-        q_max += m
-        os = m / (q_max / (t - dead_t))
-        if os < 0.7:
-            real_epsilon = epsilon / os ** 4
-        elif os < 1:
-            real_epsilon = epsilon / os ** 3
-        elif os < 1.3:
-            real_epsilon = (FINAL_EPSILON - epsilon) / (1.3 - 1) * (os - 1) + epsilon
-        else:
-            real_epsilon = FINAL_EPSILON
 
-        print("타임스텝", t, "/ 상태", state, "/ 입실론", real_epsilon, "/ 액션", action_index, "/ 보상", r_t, "/ Q 최대값 %e" % m)
-        '''T.delete('1.0', tkinter.END)
-        m = np.max(readout_t)
+        print("타임스텝", t, "/ 상태", state, "/ 입실론", epsilon, "/ 액션", action_index, "/ 보상", r_t, "/ Q 최대값 %e" % m)
+        """T.delete('1.0', tkinter.END)
+
         #T.insert(tkinter.END, "MAX Q | " + str(m), 'big')
         if(max1 < m):
             max1 = m
@@ -247,7 +236,7 @@ def train_network(s, readout, sess):
             T.tag_config("start", foreground="green")
         else:
             T.tag_config("start", foreground="blue")
-        T.update()'''
+        T.update()"""
 
 
         # 파일에 저장

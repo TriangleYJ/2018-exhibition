@@ -4,12 +4,13 @@ import mss
 import numpy as np
 import pyautogui
 import openpyxl
+from collections import deque
 
 
-def current_milli_time():
+def current_milli_time(): # 현재의 시간을 소수 셋째짜리까지 구하는 함수입니다.
     return int(round(time.time() * 1000)) / 1000
 
-def checkvalue(array):
+def checkvalue(array): # 픽셀의
     arraya = []
     for i in range(480):
         pix = array[i][0]
@@ -23,8 +24,11 @@ class geometry:
     active = 0
     a = 1 #엑셀 시작 지점
 
+    D = deque()
+
 
     def frame_step(self, input_actions):
+
         with mss.mss() as sct:
             if input_actions[1] == 1:
                 pyautogui.click(216,445)
@@ -34,17 +38,21 @@ class geometry:
             terminal = False
             self.now = current_milli_time() - self.init
 
-            # Get raw pizels from screen and save to numpy array
+            # Get raw pizels from screen and save to numpy arrayqq
             img = np.array(sct.grab(monitor))
-            x_t1 = cv2.cvtColor(cv2.resize(img, (80, 80)), cv2.COLOR_BGR2GRAY)
+            crop_xt2 =cv2.cvtColor(cv2.resize(img, (80, 80)), cv2.COLOR_BGR2GRAY)
             crop_xt1 = img[0:480, 245:246]
 
-            '''cv2.imshow('window', crop_xt1)
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()'''
+            """cv2.imshow('window', crop_xt2)
+            if(cv2.waitKey(25)&0xFF==ord('q')):
+                cv2.destroyAllWindows()"""
+            cnow = checkvalue(crop_xt1)
+            self.D.append(cnow)
+            last = 0
+            if len(self.D) > 6:
+                last = self.D.popleft()
 
-            #dead number = 43650, 44500
-            if (checkvalue(crop_xt1) == 43650 or checkvalue(crop_xt1) == 44500) and self.now > 2000/1000: # dead
+            if (checkvalue(crop_xt1) != 0) and self.now > 2000/1000 and last == cnow: # dead
 
                 terminal = True
                 if self.active > 0:
@@ -63,4 +71,4 @@ class geometry:
                 reward = self.now
 
 
-            return x_t1, reward, terminal
+            return crop_xt2, reward, terminal
